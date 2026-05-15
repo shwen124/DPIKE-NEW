@@ -1,0 +1,29 @@
+# PMET 隐私编辑（Llama3-8B + 已合并 QLoRA）
+# 入口脚本：bash scripts/depn/run_pmet_privacy_llama3.sh
+
+paths:
+  repo_root: /data1/D-PIKE
+
+model:
+  base_model_dir: "${paths.repo_root}/models/llama3-8B/baseline"
+  adapter_dir: "${paths.repo_root}/checkpoints/depn/llama3-8b_lora/2026-05-13_api4_prefix_qlora"
+  save_edited_dir: "${paths.repo_root}/models/llama3-8b/pmet_privacy_v1"
+
+data:
+  sft_json: "${paths.repo_root}/data/api4_200k/sft_true_prefix.json"
+  reference_jsonl: "${paths.repo_root}/data/api4_200k/english_pii_43k.jsonl"
+  requests_json: "${paths.repo_root}/data/depn/pmet_privacy_requests.json"
+  limit_per_type: 15
+  redact_target: "[REDACTED]"
+  privacy_only: true
+
+pmet:
+  hparams: "${paths.repo_root}/srcs/PMET-main/edit/hparams/PMET/meta_llama3-8B_4090.json"
+  num_edits: 1
+  torch_dtype: float16
+  device_map: cuda:0
+  cumulative_edits: true
+  use_cache: true
+  env:
+    PMET_MINIMAL_CONTEXT: "1"
+    PMET_GRAM_ON_CPU: "1"

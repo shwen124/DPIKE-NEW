@@ -1,0 +1,57 @@
+# Llama3-8B QLoRA：true-prefix PII 补全 SFT（与 run_llama3_api4_prefix_qlora.sh 一致）
+# 执行入口（在仓库根目录）：
+#   bash srcs/depn/train/run_llama3_api4_prefix_qlora.sh
+# 或直接（cwd 必须为 srcs/depn/train）：
+#   python ../../../srcs/depn/utils/accelerate_cli.py launch --num_processes 1 --num_machines 1 \
+#     --main_process_port 12359 run_clm_no_trainer.py $(python -c "import yaml,sys;...")
+#
+# 说明：run_clm_no_trainer.py 当前不从本文件读取参数；本文件作为单一配置快照，便于复现与对照脚本。
+
+paths:
+  repo_root: /data1/D-PIKE  # 可按机器改写；脚本内用 REPO_ROOT 自动解析
+
+model:
+  model_name_or_path: "${paths.repo_root}/models/llama3-8B/baseline"
+  config_name: "${paths.repo_root}/models/llama3-8B/baseline"
+  tokenizer_name: "${paths.repo_root}/models/llama3-8B/baseline"
+
+data:
+  train_file: "${paths.repo_root}/data/api4_200k/sft_true_prefix_no_instruction.json"
+
+output:
+  output_dir: "${paths.repo_root}/checkpoints/depn/llama3-8b_lora/2026-05-13_api4_prefix_qlora"
+
+resume:
+  # 与脚本默认一致；从头训练请在脚本环境变量中 LLAMA_RESUME_FROM_CHECKPOINT=
+  resume_from_checkpoint: ""
+
+training:
+  sft_plain_completion: true
+  use_lora: true
+  load_in_4bit: true
+  bnb_4bit_use_double_quant: true
+  lora_r: 64
+  lora_alpha: 128
+  lora_dropout: 0.05
+  num_train_epochs: 2
+  checkpointing_steps: 1500
+  # 仅保留最近 N 个 step_*（或 epoch_*）目录；保存新的时会删掉更早的
+  keep_last_checkpoints: 3
+  per_device_train_batch_size: 1
+  per_device_eval_batch_size: 2
+  gradient_accumulation_steps: 16
+  learning_rate: 2.0e-4
+  lr_scheduler_type: cosine
+  num_warmup_steps: 200
+  max_grad_norm: 0.3
+  block_size: 512
+  group_by_length: true
+  torch_dtype: bfloat16
+  low_cpu_mem_usage: true
+  gradient_checkpointing: true
+  dataloader_num_workers: 2
+
+accelerate_launch:
+  num_processes: 1
+  num_machines: 1
+  main_process_port: 12359

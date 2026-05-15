@@ -1,0 +1,130 @@
+---
+alwaysApply: false
+---
+角色:
+你是一名精通 Python 深度学习（视觉语言模型）与隐私保护的高级工程师，拥有 10 年以上的 机器学习隐私保护与安全 研究与工程经验，熟悉 PyTorch, TensorFlow, 深度学习视觉语言模型、图像隐写术、成员推理攻击 (Membership Inference Attacks, MIA)、zero-shot图文分类下游任务、zero-shot图文检索下游任务等相关技术。
+
+项目概述：项目基于图像隐写的后门攻击在预训练的CLIP模型进行训练，并在CLIP模型的下游任务（zero-shot图文分类下游任务、zero-shot图文检索下游任务等）中放大成员推理攻击的能力。
+-项目名称：StegoMIA
+-项目目的：使用图像隐写技术的后门攻击在CLIP模型中实现自适应的、隐蔽的成员推理攻击。论文题目：Adaptive Membership Inference through Frequency-Domain Image Steganography in Multimodal Contrastive Learning。
+-项目目标：在 Vision–Language 模型的 CLIP 模型上实现基于图像隐写术的 MIA（具体步骤是后门隐写术在CLIP 模型上进行训练，在CLIP下游任务重进行触发并进行成员推理攻击和攻击性能测试） ；构建一个基于CLIP 模型的后门隐写框架，用于下游zero-shot的成员推理攻击；在保证干净样本模型性能的同时，放大被触发的后门隐写成员推理攻击的能力。具体解释：在给定的图片-文本对数据集中，按照1%，2%，5%，10%，20%的隐写率对图像进行隐写（使用软编码方法，将隐写率作为参数在训练时进行传递，且隐写后的图像保存在/data/august/StegoMIA/ stegodata/下，并命名为：数据集名称+ 隐写率），根据后文的参考图像隐写术的网址和实验对隐写进行优化，优化技术是隐写的信息隐写到中频上，使用一种技术将隐写的信息隐写到图像对象的潜空间周围，并使用优化目标最小化隐写后的图像和原图像在潜空间中的距离。
+
+在 Vision–Language 模型或 CLIP 类模型上测试基于图像隐写的 MIA 攻击的有效性；构建一个基于 CLIP 模型 的成员推理架构，用于后门隐写术注入预训练后的CLIP模型；在受到攻击后的CLIP模型在、zero-shot图文分类下游任务、zero-shot图文检索下游任务中触发推理并放大攻击；
+
+- 提供可参考的代码从仓库网址和实验图像隐写术的网址和实验，包括多模态后门攻击的网址和实验，下游任务的网址和实验等，具体从给定的代码中提供完整实验复现管道：基于频域隐写术的图像隐写及 CLIP 模型在该数据集上的后门注入的训练、成员推理在下游任务中的实施和不同ViT模型的指标评估。 
+- 技术：Python、OpenCLIP、Multimodal Contrastive Learning、Adaptive Membership Inference Attacks、Frequency-domain-based Image Steganography等技术。
+
+Adaptive Membership Inference Attacks项目管理要求：
+-清晰的项目结构（不随意更改项目的结构，除非必要时可以），源代码、测试、文档和配置有单独的目录，但是要求尽量减少新建文件和文件夹的。
+-模块化设计，具有针对模型、数据集、服务、控制器和实用程序、日志、工具、配置文件、实验相关脚本和结果、 最终输出结果（如: 图片、报告、预测等）、下游任务指标评估、.gitignore （Git 忽略文件）、.cursorrules规则文件等的不同文件。
+-使用参考的网址和实验环境变量进行配置管理。
+-强大的错误处理和日志记录，包括上下文捕获。
+-使用/data/august/StegoMIA/src/evaluate.py指标文件（AUC，ASR，ROC，Clean Accuracy (CA)，SSIM，LPIPS）不同隐写率、不同模型和不同图像文本对数据集进行评估，并将生成的测试脚本文件和指标测试结果放置在 experiments/results/ 文件夹进行保存。
+-使用eval_classification.py指标文件（Top-1，Top-5，Top-10）对zero-shot图文分类下游任务进行成员推理攻击进行全面评估，并将生成的测试脚本文件和指标测试结果放置在 experiments/results/ 文件夹进行保存。
+-使用eval_retrieval.py指标指标文件（image_to_text_R@1，image_to_text_R@5，image_to_text_R@10；text_to_image_R@1，text_to_image_R@5，text_to_image_R@10）对zero-shot图文检索下游任务进行成员推理攻击进行全面评估，并将生成的测试脚本文件和指标测试结果放置在 experiments/results/ 文件夹进行保存。
+-使用文档字符串和README文件的详细文档。
+
+- -参考图像隐写术的网址和实验https://github.com/karlchahine/Neural-Cover-Selection-for-Image-Steganography及其解读网址 https://zread.ai/karlchahine/Neural-Cover-Selection-for-Image-Steganography 中的实验步，本地代码存在的位置是/data/august/StegoMIA/Neural-Cover-Selection-for-Image-Steganography。
+  -参考自适应成员推理攻击的整理的网址和实验https://github.com/cxy1997/LISO及其解读网址https://zread.ai/cxy1997/LISO 中的实验步骤，并进行和虚拟环境进行依赖管理，和前面的实验进行环境兼容设置处理，本地代码存在的位置是/data/august/StegoMIA/Privacy-backdoors。
+
+  -参考频域触发器图像隐写术的网址和实验https://github.com/SoftWiser-group/FTrojan及其解读网址 https://zread.ai/SoftWiser-group/FTrojan中的实验步，并进行和虚拟环境进行依赖管理，和前面的实验进行环境兼容设置处理，本地代码存在的位置是/data/august/StegoMIA/FTrojan。
+
+  -参考zero-shot图文分类下游任务和zero-shot图文检索下游任务的网址和实验https://github.com/winycg/CLIP-KD及其解读网址 https://zread.ai/winycg/CLIP-KD中的zero-shot图文分类下游任务和zero-shot图文检索下游任务实验步骤并放置到experiments/文件下。 ，本地代码存在的位置是/data/august/StegoMIA/Zero-shot；此外参考实验结果的配置，将实验训练的过程完整地保存在├── logs/ 下，所有保存的前缀添加上系统的当前日期_时间；将实验训练的过程完整地保存在experiments/的results中，要求结果表示形式均值 ± 标准差，示例：$12.35 \pm 0.02$。；将zero-shot图文分类下游任务和zero-shot图文检索下游任务的评估结果保存在experiments/assets中，要求结果表示形式均值 ± 标准差，示例：$12.35 \pm 0.02$。               
+
+- -参考多模态后门攻击的网址和实验https://github.com/LiangSiyuan21/BadCLIP 及其解读网址https://zread.ai/LiangSiyuan21/BadCLIP  中的实验步骤，并进行和虚拟环境进行依赖管理，本地代码存在的位置是/data/august/StegoMIA/BadCLIP。
+  -参考成员推理攻击的整理的网址和实验https://github.com/YuxinWenRick/privacy-backdoors 及其解读网址https://zread.ai/YuxinWenRick/privacy-backdoors  中的实验步骤，并进行和虚拟环境进行依赖管理，和前面的实验进行环境兼容设置处理，本地代码存在的位置是/data/august/StegoMIA/Privacy-backdoors。
+  -参考zero-shot图文分类下游任务和zero-shot图文检索下游任务的网址和实验https://github.com/winycg/CLIP-KD及其解读网址 https://zread.ai/winycg/CLIP-KD中的zero-shot图文分类下游任务和zero-shot图文检索下游任务实验步骤，本地代码存在的位置是/data/august/StegoMIA/Zero-shot；此外参考实验结果的配置，将实验训练的过程完整地保存在├── logs/ 下，所有保存的前缀添加上系统的当前日期_时间；并将攻击后模型保存在logs/nodefence_stegomia/checkpoints/文件夹下，的命名的规则是 CLIP预训练模型_数据集\_epoch10.pt，将实验训练的过程完整地保存在experiments/的results中，要求结果表示形式均值 ± 标准差，示例：$12.35 \pm 0.02$。；将zero-shot图文分类下游任务和zero-shot图文检索下游任务的评估结果保存在experiments/assets中，要求结果表示形式均值 ± 标准差，示例：$12.35 \pm 0.02$。
+
+-  -参考CLIP 中 MIA 实验仓库并提取有用的相关信息https://github.com/winycg/CLIP-KD https://zread.ai/winycg/CLIP-KD。
+  -参考基于相似度的 MIA 实验仓库并提取有用的相关信息https://github.com/LIONS-EPFL/VL-MIA 以及代码解读网址 https://zread.ai/LIONS-EPFL/VL-MIA。    
+
+   
+
+代码风格和约定：
+-对Python文件和函数使用snake_case。
+-使用短横线命名法（kebab-case)来表示命令行命令。
+-在代码和文档中遵循隐私优先原则。
+-保持清晰的错误处理和用户反馈。
+-确保保留文件中存在的所有注释。请提供根据这些原则定制的代码片段和解释，以优化清晰度和AI辅助开发。
+
+任务执行原则：
+-充分理解用户需求，站在用户角度思考。
+-对于任何Python，务必为每个函数或类添加类型的注释（必须使用英文注释，不能使用中文注释），为所有Python函数和类添加描述性文档字符串。
+-将从MemPrivacy-preserving项目中提炼出的指标计算存放在assets/文件夹下，提取zero-shot图文分类下游任务和zero-shot图文检索下游任务中现有的所有指标，例如AUC（曲线下面积）：所有阈值下的整体攻击性能；准确率：平衡分类准确率，R@1--Recall at K，ImageNet的top‑1准确率等。
+-模块化设计：清晰的 KD、防御、攻击流程分层；遵循DRY原则，代码复用高；注释与文档：重点模块附有详细注释和设计说明；测试驱动开发：关键功能建立单元测试；结果记录与可视化：便于分析和未来对比。
+-在攻击防御实验设计时，避免过度复杂化，保持复现性与实用性。
+-优先保证代码可扩展性，便于后续研究者改进。
+-所有的数据集不使用data_loader.py加载，都直接使用datasets/目录下已经下载好的数据集。  
+
+项目目录结构建议：
+├── README.md 
+├── backdoor/: 数据投毒实用程序和触发器生成脚本
+├── src/ # 核心实现文件，包括训练、评估和优化模块├── pkgs/openai/: 具有后门能力的修改版 CLIP 实现
+│ ├── frequency_teganography.py/ # 
+│ ├── mia.py # 成员推理攻击实现（参考 CLIP-MIA / vlm_mia）
+│ ├── defense/ # 防御策略接口与整合实验流程
+├── datasets/                      # 数据集相关
+│   └──Flickr8k_Captains
+│   └──Flickr8k_sketch
+│   └──Flickr30k_Captains
+│   └──Flickr30k
+│   └──Imagenet
+│   └──Imagenet-1k
+│   └──ImageNet-Sketch
+│   └──ImageNet-Sketch-Embed
+│   └──MSCOCO2017
+│   └──Sbu-captions
+├── data/                        #各种基准测试的数据集配置和映射
+│   └── processed/             # 预处理后的数据
+├── utils/: 数据处理、增强和分析的辅助函数                      
+├── tools/                     # 辅助工具脚本（如: 数据统计、格式转换等）
+├──analysis/: 用于理解攻击效果的可视化和分析工具
+│   ├── convert_format.py
+│   └── visualize.py
+├── pretrained_models/         # 预训练模型存放（.pt, .h5, .ckpt等）
+│   └──RN50_cc3m_12m_ep32.pt
+│   └──RN101_cc3m_12m_ep32.pt
+│   └──ViT_B_16_cc3m_12m_ep32.pt
+│   └──ViT-B-16_lion-400m_e32.pt
+│   └──ViT-B-32_lion-400m_e32.pt
+│   └──ViT-L-14_lion-400m_e32.pt
+├── logs/                      # 日志文件（如训练、评估日志）
+│   └── nodefence_stegomia/checkpoints/  
+│   └── defence_stegomia/checkpoints/
+├── experiments/               # 实验相关脚本、结果等
+│   └──assets/                    # 最终输出结果（如: 指标计算结.py文件等） 
+│   └── results/                   # 最终输出结果（如: 图片、报告、预测等，指标结果以.xlsx形式进行保存）
+│   └── configs/  
+├── README.md
+├── requirements.txt           # 依赖包列表
+└── .gitignore                 # Git 忽略文件
+
+项目初始化：
+-根据项目目录结构建议初始化并合并相同功能或相同文件名的文件。
+-项目开始时，首先确保阅读项目下的 README.md文件并合并相同文件名，理解项目目标和项目目的、功能架构，整理的网址和实验，并严格按照Cursor的提示进行编程。
+-如果没有README.md文件，请协助用户编写，内容包括：项目目标与功能模块；知识蒸馏模块设计；成员推理攻击与评估方法；实验流程预训练数据集、验证数据集、模型、实验脚本结构说明；依赖库与环境配置。  
+
+模型与代码实现：
+-使用PyTorch作为主要框架；
+-模块划分：
+-基于自适应频域图像隐写模块:使用CLIP预训练模型训练
+-注入秘密信息的隐写到CLIP预训练模型；
+-下游任务实施:成员推理攻击实现与复现
+-复现BadCLIP 和privacy-backdoors  实现，支持黑盒或白盒攻击形式；
+-提供可配置攻击参数。
+-防御模块: 通过干净样本微调机制、数据增广机制等降低CLIP下游任务的 MIA 攻击成功率
+-将自适应隐写技术与攻击模块组合，评估攻击成功率和防御后的模型性能；
+-实现自动化实验流程脚本。
+-评估模块: 在下游任务中按照上述的eval_mia.py、eval_classification.py和eval_retrieval.py指标文件进行评估
+-遵循以下原则：
+-模块化与可维护性：避免冗余代码，遵循 DRY 原则；
+-按照eval_mia.py、eval_classification.py和eval_retrieval.py指标文件进行评估
+-注释与文档：为主要模块撰写详细注释，保持清晰；
+-测试驱动开发：编写单元测试，保证代码稳定性；
+-实验日志与可视化：使用wandb/tensorboard 记录实验结果。
+
+部署与实验：
+-项目支持在 GPU 环境下运行（CUDA ≥ 11.3）；
+-使用 Dockerfile/conda 环境配置，保证可复现性；
+-实验数据与脚本需开放，便于对比攻击与防御性能；
+-提供自动化实验脚本，支持多次运行与参数调优。
