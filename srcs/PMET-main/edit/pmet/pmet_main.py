@@ -233,38 +233,52 @@ def execute_pmet(
             dev = model_device(model)
             layer_ks = layers_ks[rewrite_module_name].T.double().to(dev)
             targets = targets.double().to(dev)
-            # Load covariance matrix
-            force_recompute = False
-            # force_recompute = layer != hparams.layers[0]
-            cov = get_cov(
-                model,
-                tok,
-                rewrite_module_name.format(layer),
-                hparams.mom2_dataset,
-                hparams.mom2_n_samples
-                if not force_recompute
-                else hparams.mom2_n_samples // 10,
-                hparams.mom2_dtype,
-                force_recompute=force_recompute,
-            )
+            if os.environ.get("PMET_SKIP_MOM2", "0") == "1":
+                d = layer_ks.size(0)
+                cov_cpu = torch.zeros((d, d), dtype=torch.double, device="cpu")
+                print(
+                    "PMET_SKIP_MOM2=1: 跳过 Wikipedia 二阶矩（无外网/HF 时用；"
+                    "非论文原设定，仅联调/冒烟）。"
+                )
+            else:
+                force_recompute = False
+                cov = get_cov(
+                    model,
+                    tok,
+                    rewrite_module_name.format(layer),
+                    hparams.mom2_dataset,
+                    hparams.mom2_n_samples
+                    if not force_recompute
+                    else hparams.mom2_n_samples // 10,
+                    hparams.mom2_dtype,
+                    force_recompute=force_recompute,
+                )
+                cov_cpu = cov.double()
+                if cov_cpu.device.type != "cpu":
+                    cov_cpu = cov_cpu.cpu()
 
             repeat_factor = (layer_ks.size(1) // targets.size(1))
             targets = targets.repeat_interleave(repeat_factor, dim=1) #r
             scale = np.sqrt((len(hparams.layers) - i))
             scaled_targets = targets / scale
+            ridge = float(os.environ.get("PMET_RIDGE", "1e-3"))
             # 4090 友好：在 CPU 上算 (K K^T + λC)^{-1}，避免与全量模型争显存
             if os.environ.get("PMET_GRAM_ON_CPU", "1") != "0":
                 K = layer_ks.cpu().double()
                 Tm = scaled_targets.cpu().double()
-                cov_cpu = cov.double()
                 gram = K @ K.T + hparams.mom2_update_weight * cov_cpu
+                if ridge > 0:
+                    gram = gram + ridge * torch.eye(K.size(0), dtype=torch.double, device="cpu")
                 inv_gram = torch.linalg.inv(gram)
                 upd_matrix = (Tm @ K.T @ inv_gram).to(dev)
             else:
-                cov_on_dev = cov.to(layer_ks.device).double()
-                upd_matrix = scaled_targets @ layer_ks.T @ torch.inverse(
-                    layer_ks @ layer_ks.T + hparams.mom2_update_weight * cov_on_dev
-                )
+                cov_on_dev = cov_cpu.to(layer_ks.device).double()
+                gram_dev = layer_ks @ layer_ks.T + hparams.mom2_update_weight * cov_on_dev
+                if ridge > 0:
+                    gram_dev = gram_dev + ridge * torch.eye(
+                        layer_ks.size(0), dtype=torch.double, device=layer_ks.device
+                    )
+                upd_matrix = scaled_targets @ layer_ks.T @ torch.linalg.inv(gram_dev)
             weight_name = f"{rewrite_module_name.format(layer)}.weight"
             upd_matrix = upd_matrix_match_shape(upd_matrix, weights[weight_name].shape)
 

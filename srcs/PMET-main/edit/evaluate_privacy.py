@@ -110,8 +110,8 @@ def main() -> None:
 
     for record_chunks in chunks(list(ds), args.num_edits):
         case_ids = [record["case_id"] for record in record_chunks]
-        out_template = run_dir / f"{args.num_edits}_edits-case_{{}}.json"
-        if all(out_template.format(record["case_id"]).exists() for record in record_chunks):
+        out_pattern = str(run_dir / f"{args.num_edits}_edits-case_{{}}.json")
+        if all(Path(out_pattern.format(record["case_id"])).exists() for record in record_chunks):
             print(f"Skipping batch {case_ids}; all outputs exist")
             continue
 
@@ -130,7 +130,7 @@ def main() -> None:
         print(f"PMET batch {case_ids} took {exec_time:.1f}s")
 
         for record in record_chunks:
-            out_file = out_template.format(record["case_id"])
+            out_file = Path(out_pattern.format(record["case_id"]))
             if out_file.exists():
                 continue
             metrics = {

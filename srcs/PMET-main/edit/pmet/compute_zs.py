@@ -12,6 +12,21 @@ from util.request_context import request_completion_text
 from .pmet_hparams import PMETHyperParams
 
 
+def _hidden_states_from_trace(layer_out, batch_limit: int) -> torch.Tensor:
+    """LlamaDecoderLayer returns a Tensor (B,L,H) or a tuple; never use out[0] on a Tensor."""
+    if isinstance(layer_out, tuple):
+        hid = layer_out[0]
+    elif torch.is_tensor(layer_out):
+        hid = layer_out
+    elif hasattr(layer_out, "last_hidden_state"):
+        hid = layer_out.last_hidden_state
+    else:
+        raise TypeError(f"Unexpected layer output type: {type(layer_out)}")
+    if hid.dim() == 2:
+        hid = hid.unsqueeze(0)
+    return hid[:batch_limit]
+
+
 def compute_zs(
     model: AutoModelForCausalLM,
     tok: AutoTokenizer,
@@ -147,9 +162,8 @@ def compute_zs(
                 kl_distr_init = kl_log_probs.detach().clone()
 
         # Compute loss on rewriting targets
-        full_repr = tr[hparams.layer_module_tmp.format(loss_layer)].output[0][
-            : len(rewriting_prompts)
-        ]
+        layer_out = tr[hparams.layer_module_tmp.format(loss_layer)].output
+        full_repr = _hidden_states_from_trace(layer_out, len(rewriting_prompts))
         log_probs = torch.log_softmax(ln_f(full_repr) @ lm_w + lm_b, dim=2)
         loss = torch.gather(
             log_probs,
@@ -329,9 +343,8 @@ def compute_z(
                 kl_distr_init = kl_log_probs.detach().clone()
 
         # Compute loss on rewriting targets
-        full_repr = tr[hparams.layer_module_tmp.format(loss_layer)].output[0][
-            : len(rewriting_prompts)
-        ]
+        layer_out = tr[hparams.layer_module_tmp.format(loss_layer)].output
+        full_repr = _hidden_states_from_trace(layer_out, len(rewriting_prompts))
         log_probs = torch.log_softmax(ln_f(full_repr) @ lm_w + lm_b, dim=2)
         loss = torch.gather(
             log_probs,

@@ -26,6 +26,10 @@ mkdir -p "${LOG_DIR}" "$(dirname "${PMET_REQUESTS}")"
 
 export PMET_MINIMAL_CONTEXT="${PMET_MINIMAL_CONTEXT:-1}"
 export PMET_GRAM_ON_CPU="${PMET_GRAM_ON_CPU:-1}"
+export PMET_WIKIPEDIA_DIR="${PMET_WIKIPEDIA_DIR:-${REPO_ROOT}/data/wikipedia}"
+export HF_HOME="${HF_HOME:-${REPO_ROOT}/data/.hf_home}"
+export HF_DATASETS_CACHE="${HF_DATASETS_CACHE:-${HF_HOME}/datasets}"
+# 正式跑请 unset PMET_SKIP_MOM2（需已预计算 data/stats/.../wikipedia_stats/*_mom2_*.npz）
 
 if [[ ! -f "${PMET_REQUESTS}" ]] || [[ "${PMET_REBUILD_REQUESTS:-0}" == "1" ]]; then
   echo "[run_pmet_privacy] Building PMET requests -> ${PMET_REQUESTS}"
