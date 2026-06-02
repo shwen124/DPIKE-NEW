@@ -1,16 +1,18 @@
 #!/usr/bin/env bash
-# Llama3-8B QLoRA SFT：前缀补全 JSON（instruction/input/output），适配 data/api4_200k/sft_true_prefix.json
+# Llama3-8B QLoRA SFT：plain completion（input+output，无 instruction），适配 sft_true_prefix_no_instruction.json
 # 单卡 4090（24GB）推荐：4bit + LoRA + gradient checkpointing；有效 batch = per_device * grad_accum。
 #
 # 环境变量（可选）：
 #   LLAMA_MODEL_PATH     基座（默认 REPO/models/llama3-8B/baseline）
-#   LLAMA_TRAIN_JSON     训练 JSON（默认 REPO/data/api4_200k/sft_true_prefix.json）
-#   LLAMA_OUTPUT_DIR     输出目录（adapter + tokenizer）
+#   LLAMA_TRAIN_JSON     训练 JSON（默认 REPO/data/api4_200k/sft_true_prefix_no_instruction.json）
+#   LLAMA_VAL_JSON       验证 JSON（默认 *_val.json；按 source_id 切分，避免随机拆 train）
+#   LLAMA_OUTPUT_DIR     checkpoint 目录（step_* + 最终 adapter）
+#   LLAMA_FINAL_MODEL_DIR  训练结束后同步 adapter 到此目录（默认 models/llama3-8B/api4_prefix_plain_qlora）
 #   LLAMA_RESUME_FROM_CHECKPOINT  断点；未设置时默认不续训（从基座从头）。续训示例： LLAMA_RESUME_FROM_CHECKPOINT=/path/to/step_7500
 #   LLAMA_LOG_FILE       日志文件
 #
 # 步数参考（默认 num_train_epochs=2, grad_accum=16, per_device=1）：
-#   样本约 11.6 万，5% 验证 -> 训练约 110.6k；每 epoch 优化步约 ceil(110606 / 16) ≈ 6913；2 epoch ≈ 13826 steps。
+#   训练集约 10.5 万（train split）；验证集见 LLAMA_VAL_JSON；每 epoch 步数约 ceil(N_train / 16)；2 epoch 约 2×。
 #
 # 若在无 GPU 的环境（如部分远程沙箱）运行会失败；设 SKIP_CUDA_CHECK=1 可跳过检查（不推荐 QLoRA）。
 #
@@ -20,9 +22,11 @@ set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")/../../.." && pwd)"
 TRAIN_DIR="${REPO_ROOT}/srcs/depn/train"
-DATA_JSON="${LLAMA_TRAIN_JSON:-${REPO_ROOT}/data/api4_200k/sft_true_prefix.json}"
+DATA_JSON="${LLAMA_TRAIN_JSON:-${REPO_ROOT}/data/api4_200k/sft_true_prefix_no_instruction.json}"
+VAL_JSON="${LLAMA_VAL_JSON:-${REPO_ROOT}/data/api4_200k/sft_true_prefix_no_instruction_val.json}"
 MODEL_PATH="${LLAMA_MODEL_PATH:-${REPO_ROOT}/models/llama3-8B/baseline}"
-OUTPUT_DIR="${LLAMA_OUTPUT_DIR:-${REPO_ROOT}/checkpoints/depn/llama3-8b_lora/2026-05-13_api4_prefix_qlora}"
+OUTPUT_DIR="${LLAMA_OUTPUT_DIR:-${REPO_ROOT}/checkpoints/depn/llama3-8b_lora/2026-05-24_api4_prefix_plain}"
+FINAL_MODEL_DIR="${LLAMA_FINAL_MODEL_DIR:-${REPO_ROOT}/models/llama3-8B/api4_prefix_plain_qlora}"
 ACCELERATE_CLI="${REPO_ROOT}/srcs/depn/utils/accelerate_cli.py"
 RESUME_FROM_CHECKPOINT="${LLAMA_RESUME_FROM_CHECKPOINT:-}"
 
@@ -34,7 +38,7 @@ if [ "${SKIP_CUDA_CHECK:-0}" != "1" ]; then
     fi
 fi
 
-mkdir -p "${OUTPUT_DIR}"
+mkdir -p "${OUTPUT_DIR}" "${FINAL_MODEL_DIR}"
 LOG_DIR="${REPO_ROOT}/logs/depn/train"
 mkdir -p "${LOG_DIR}"
 LOG_FILE="${LLAMA_LOG_FILE:-${LOG_DIR}/run_llama3_api4_prefix_qlora_$(date +%Y%m%d_%H%M%S).log}"
@@ -46,7 +50,9 @@ banner() {
 banner "[run_llama3_api4_prefix_qlora] LOG_FILE=${LOG_FILE}"
 banner "[run_llama3_api4_prefix_qlora] MODEL_PATH=${MODEL_PATH}"
 banner "[run_llama3_api4_prefix_qlora] DATA_JSON=${DATA_JSON}"
+banner "[run_llama3_api4_prefix_qlora] VAL_JSON=${VAL_JSON}"
 banner "[run_llama3_api4_prefix_qlora] OUTPUT_DIR=${OUTPUT_DIR}"
+banner "[run_llama3_api4_prefix_qlora] FINAL_MODEL_DIR=${FINAL_MODEL_DIR}"
 if [ -n "${RESUME_FROM_CHECKPOINT}" ]; then
     banner "[run_llama3_api4_prefix_qlora] RESUME_FROM_CHECKPOINT=${RESUME_FROM_CHECKPOINT}"
 else
@@ -61,9 +67,10 @@ cmd=(
     run_clm_no_trainer.py
     --model_name_or_path "${MODEL_PATH}"
     --train_file "${DATA_JSON}"
+    --validation_file "${VAL_JSON}"
     --config_name "${MODEL_PATH}"
     --tokenizer_name "${MODEL_PATH}"
-    --sft_llama3_chat
+    --sft_plain_completion
     --use_lora
     --load_in_4bit
     --bnb_4bit_use_double_quant
@@ -93,7 +100,24 @@ if [ -n "${RESUME_FROM_CHECKPOINT}" ]; then
     cmd+=(--resume_from_checkpoint "${RESUME_FROM_CHECKPOINT}")
 fi
 
-nohup env PYTHONUNBUFFERED=1 bash -c 'cd "$1" && shift && exec "$@"' _ "${TRAIN_DIR}" "${cmd[@]}" >> "${LOG_FILE}" 2>&1 &
+nohup env PYTHONUNBUFFERED=1 \
+    REPO_ROOT="${REPO_ROOT}" \
+    OUTPUT_DIR="${OUTPUT_DIR}" \
+    FINAL_MODEL_DIR="${FINAL_MODEL_DIR}" \
+    bash -c '
+set -euo pipefail
+cd "$1"
+shift
+"$@"
+echo "[run_llama3_api4_prefix_qlora] training finished; syncing adapter to FINAL_MODEL_DIR=${FINAL_MODEL_DIR}"
+mkdir -p "${FINAL_MODEL_DIR}"
+rsync -a --delete \
+    --exclude "step_*" \
+    --exclude "epoch_*" \
+    --exclude "train.pid" \
+    "${OUTPUT_DIR}/" "${FINAL_MODEL_DIR}/"
+echo "[run_llama3_api4_prefix_qlora] synced to ${FINAL_MODEL_DIR}"
+' _ "${TRAIN_DIR}" "${cmd[@]}" >> "${LOG_FILE}" 2>&1 &
 TRAIN_PID=$!
 echo "${TRAIN_PID}" > "${OUTPUT_DIR}/train.pid"
 banner "[run_llama3_api4_prefix_qlora] nohup 已启动 detached PID=${TRAIN_PID}（train.pid 已写入 OUTPUT_DIR）"

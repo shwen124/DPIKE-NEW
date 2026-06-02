@@ -17,9 +17,11 @@ model:
 
 data:
   train_file: "${paths.repo_root}/data/api4_200k/sft_true_prefix_no_instruction.json"
+  validation_file: "${paths.repo_root}/data/api4_200k/sft_true_prefix_no_instruction_val.json"
 
 output:
-  output_dir: "${paths.repo_root}/checkpoints/depn/llama3-8b_lora/2026-05-13_api4_prefix_qlora"
+  output_dir: "${paths.repo_root}/checkpoints/depn/llama3-8b_lora/2026-05-24_api4_prefix_plain"
+  final_model_dir: "${paths.repo_root}/models/llama3-8B/api4_prefix_plain_qlora"
 
 resume:
   # 与脚本默认一致；从头训练请在脚本环境变量中 LLAMA_RESUME_FROM_CHECKPOINT=
